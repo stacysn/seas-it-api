@@ -6,7 +6,6 @@ let db = require('./models');
 let controllers = require('./controllers');
 let User = db.User;
 let passport = require('passport');
-let io = require('socket.io')();
 let session = require('express-session');
 let cookieParser = require('cookie-parser');
 let LocalStrategy = require('passport-local').Strategy;
@@ -83,6 +82,12 @@ app.post('/signup', function signup (req, res) {
   )
 })
 
+app.get('/users', (req, res) => {
+  User.find({}, (err, users) => {
+    res.json(users);
+  })
+})
+
 app.post('/login', passport.authenticate('local'), function (req, res) {
   console.log(JSON.stringify(req.user));
   res.send(req.user);
@@ -99,8 +104,25 @@ app.get('/logout', function(req, res){
 ////////SOCKET IO /////////////
     ////////////////////////
 
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
+
+io.on('connection', (client) => {
+  console.log('Client connected...');
+
+  client.on('join', data => {
+    console.log(data);
+    client.emit('messages', 'Hello from the server!');
+  });
+
+  client.on('send:message', msg => {
+    console.log(msg);
+    client.emit('broad', msg);
+    client.broadcast.emit('broad', msg);
+  })
+})
 
 //start server
-app.listen(port, function() {
-  console.log("API IS RUNNING ON PORT " + port);
-})
+console.log("API IS RUNNING ON PORT " + port);
+
+server.listen(port);
